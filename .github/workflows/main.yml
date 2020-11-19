@@ -13,7 +13,7 @@ jobs:
     # uses GitHub's checkout action to checkout code form the master branch
     - uses: actions/checkout@v2
       
-    # sets up .NET Core SDK 3.1
+    # sets up .NET Core SDK 5.0.100
     - name: Setup .NET Core SDK
       uses: actions/setup-dotnet@v1.7.2
       with:
@@ -23,7 +23,7 @@ jobs:
     - name: Publish .NET Core Project
       run: dotnet publish BlazorPwa.csproj -c Release -o release --nologo 
     
-    # changes the base-tag in index.html from '/' to 'BlazorGitHubPagesDemo' to match GitHub Pages repository subdirectory
+    # changes the base-tag in index.html from '/' to 'BlazorPwa' to match GitHub Pages repository subdirectory
     - name: Change base-tag in index.html from / to BlazorPwa
       run: sed -i 's/<base href="\/" \/>/<base href="\/BlazorPwa\/" \/>/g' release/wwwroot/index.html
     
