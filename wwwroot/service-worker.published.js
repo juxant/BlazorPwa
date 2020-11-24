@@ -4,12 +4,37 @@
 self.importScripts('./service-worker-assets.js');
 self.addEventListener('install', event => event.waitUntil(onInstall(event)));
 self.addEventListener('activate', event => event.waitUntil(onActivate(event)));
-self.addEventListener('fetch', event => event.respondWith(onFetch(event)));
+self.addEventListener('fetch', event => onFetch(event));
 
 const cacheNamePrefix = 'offline-cache-';
 const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
 const offlineAssetsInclude = [ /\.dll$/, /\.pdb$/, /\.wasm/, /\.html/, /\.js$/, /\.json$/, /\.css$/, /\.woff$/, /\.png$/, /\.jpe?g$/, /\.gif$/, /\.ico$/, /\.blat$/, /\.dat$/ ];
-const offlineAssetsExclude = [ /^service-worker\.js$/ ];
+const offlineAssetsExclude = [/^service-worker\.js$/];
+
+// fetch the resource from the network
+const fromNetwork = (request, timeout) =>
+    new Promise((fulfill, reject) => {
+        const timeoutId = setTimeout(reject, timeout);
+        fetch(request).then(response => {
+            clearTimeout(timeoutId);
+            fulfill(response);
+            update(request);
+        }, reject);
+    });
+
+// fetch the resource from the browser cache
+const fromCache = request =>
+    caches.open(cacheName)
+        .then(cache =>
+            cache.match(request.mode === 'navigate' ? 'index.html' : request)
+        );
+
+// cache the current page to make it available for offline
+const update = request =>
+    caches.open(cacheName)
+        .then(cache =>
+            fetch(request).then(response => cache.put(request, response))
+        );
 
 async function onInstall(event) {
     console.info('Service worker: Install');
@@ -18,7 +43,7 @@ async function onInstall(event) {
     const assetsRequests = self.assetsManifest.assets
         .filter(asset => offlineAssetsInclude.some(pattern => pattern.test(asset.url)))
         .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
-        .map(asset => new Request(asset.url, { integrity: asset.hash }));
+        .map(asset => new Request(asset.url + '.br'));
     await caches.open(cacheName).then(cache => cache.addAll(assetsRequests));
 }
 
@@ -32,17 +57,12 @@ async function onActivate(event) {
         .map(key => caches.delete(key)));
 }
 
+// general strategy when making a request (eg if online try to fetch it
+// from the network with a timeout, if something fails serve from cache)
 async function onFetch(event) {
-    let cachedResponse = null;
-    if (event.request.method === 'GET') {
-        // For all navigation requests, try to serve index.html from cache
-        // If you need some URLs to be server-rendered, edit the following check to exclude those URLs
-        const shouldServeIndexHtml = event.request.mode === 'navigate';
+    event.respondWith(
+        fromNetwork(event.request, 10000).catch(() => fromCache(event.request))
+    );
 
-        const request = shouldServeIndexHtml ? 'index.html' : event.request;
-        const cache = await caches.open(cacheName);
-        cachedResponse = await cache.match(request);
-    }
-
-    return cachedResponse || fetch(event.request);
+    event.waitUntil(update(event.request));   
 }
