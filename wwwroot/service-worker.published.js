@@ -45,6 +45,7 @@ async function onInstall(event) {
         .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
         .map(asset => new Request(asset.url));
     await caches.open(cacheName).then(cache => cache.addAll(assetsRequests));
+    self.skipWaiting();
 }
 
 async function onActivate(event) {

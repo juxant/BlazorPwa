@@ -1,0 +1,86 @@
+﻿@page "/notification"
+
+@using Append.Blazor.Notifications
+
+@inject INotificationService _notificationService
+
+<h3>Notification</h3>
+
+<div class="row">
+    <div class="col-lg">
+        <div class="form-group">
+            <label>Supported By Browser?</label>
+            <strong>@(_isSupportedByBrowser ? "Yes, are supported" : "No, are not supported by this browser")</strong>
+        </div>
+    </div>
+    <div class="col-lg">
+        <div class="form-group">
+            <label>Permission</label>
+            <br />
+            <button class="btn btn-primary" @onclick="RequestPermissionAsync">Request Permission</button>
+            <small>The user's permission is: </small><strong>@_permission.ToString()</strong>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-6">
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input id="title" type="text" @bind-value="_title" class="form-control" placeholder="Enter Title..." />
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-6">
+        <div class="form-group">
+            <label for="body">Body</label>
+            <input id="body" type="text" @bind-value="_body" class="form-control" placeholder="Enter Body..." />
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-6">
+        <div class="form-group">
+            <label for="icon">Icon</label>
+            <input id="icon" type="text" @bind-value="_icon" class="form-control" placeholder="Enter Icon..." />
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-6">
+        <button class="btn btn-success" @onclick="SendNotificationAsync">Send Notification</button>
+    </div>
+</div>
+
+
+@code
+{
+    bool _isSupportedByBrowser;
+    PermissionType _permission;
+    string _title = "Hi from BlazorPWA";
+    string _body = "This is a test notification";
+    string _icon = "icon-512.png";
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isSupportedByBrowser = await _notificationService.IsSupportedByBrowserAsync();
+    }
+
+    async Task SendNotificationAsync()
+    {
+        var options = new NotificationOptions
+        {
+            Body = _body,
+            Icon = _icon,
+            Renotify = true,
+        };
+
+        await _notificationService.CreateAsync(_title, options);
+    }
+
+    async Task RequestPermissionAsync()
+    {
+        _permission = await _notificationService.RequestPermissionAsync();
+    }
+}
